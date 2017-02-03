@@ -91,8 +91,8 @@ function build {
 
     yum -y localinstall lorax/RPMS/ppc64le/*
     yum -y localinstall virt-manager/RPMS/noarch/*
-    yum -y --nogpgcheck install qemu-kvm-ev qemu-kvm-common-ev \
-        qemu-kvm-tools-ev qemu-img-ev libvirt
+    yum -y install qemu-kvm-ev qemu-kvm-common-ev qemu-kvm-tools-ev \
+        qemu-img-ev libvirt
     yum -y install docker
 }
 
