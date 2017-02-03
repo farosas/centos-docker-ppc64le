@@ -17,17 +17,22 @@ GIT_REPOS=( \
 "https://git.centos.org/git/centos-git-common" \
 )
 
+WORKDIR=$(pwd)/build
+BIN=${WORKDIR}/centos-git-common
+
 function prepare {
+    mkdir ${WORKDIR}
+
     yum -y install git wget
 
+    pushd ${WORKDIR}
     for repo in "${GIT_REPOS[@]}"
     do
         git clone ${repo}
     done
+    popd
 
-    ln -fs $(pwd)/centos-git-common/*.sh /usr/local/bin/
-
-    pushd lorax-src
+    pushd ${WORKDIR}/lorax-src
     git config user.email root@localhost
     git config user.name root
     git fetch origin pull/149/head:pr149
@@ -35,7 +40,7 @@ function prepare {
     git format-patch -1
     popd
 
-    pushd virt-manager-src
+    pushd ${WORKDIR}/virt-manager-src
     git config user.email root@localhost
     git config user.name root
     git checkout v1.4.0
@@ -49,22 +54,22 @@ function build {
 
     for pkg in lorax virt-manager
     do
-        pushd ${pkg}
+        pushd ${WORKDIR}/${pkg}
         specfile=SPECS/${pkg}.spec
         git checkout c7
-        get_sources.sh
+        ${BIN}/get_sources.sh
         patch=../${pkg}-src/0001*
         cp ${patch} SOURCES
         sed -i "/%description$/iPatch99: $(basename $patch)" ${specfile}
         sed -i '/%build/i%patch99 -p1' ${specfile}
-        into_srpm.sh
+        ${BIN}/into_srpm.sh
         yum-builddep -y ${specfile}
         rpmbuild --nodeps --define "%_topdir `pwd`" -bs ${specfile} && \
         rpmbuild --define "%_topdir `pwd`" -ba ${specfile}
         popd
     done
 
-    pushd sig-cloud-instance-build
+    pushd ${WORKDIR}/sig-cloud-instance-build
     git config user.email root@localhost
     git config user.name root
     git fetch origin pull/85/head:pr85
@@ -74,7 +79,7 @@ function build {
     git merge --no-commit pr65
     popd
 
-    pushd sig-core-t_docker
+    pushd ${WORKDIR}/sig-core-t_docker
     git config user.email root@localhost
     git config user.name root
     git fetch origin pull/2/head:pr2
@@ -99,7 +104,7 @@ function run {
 
     systemctl start libvirtd
 
-    pushd sig-cloud-instance-build/docker
+    pushd ${WORKDIR}/sig-cloud-instance-build/docker
     # increase guest memory to avoid possible kernel errors with low memory
     sed -i 's/\(time livemedia.*\)/\1 --ram 4096/' containerbuild.sh
     ./containerbuild.sh centos-7ppc64le.ks || { echo "Build failed"; exit 1; }
@@ -109,12 +114,12 @@ function run {
     cat /var/tmp/containers/$(date +%Y%m%d)/centos-7ppc64le/docker/centos-7ppc64le-docker.tar.xz | docker import - centos:latest
     docker tag centos:latest centos:centos7
 
-    pushd sig-core-t_docker
+    pushd ${WORKDIR}/sig-core-t_docker
     ./runtests.sh
     popd
 }
 
-if [ ! -d "sig-cloud-instance-build" ]
+if [ ! -d "${WORKDIR}" ]
 then
     prepare
     build
