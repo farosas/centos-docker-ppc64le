@@ -18,7 +18,6 @@ GIT_REPOS=( \
 )
 
 WORKDIR=$(pwd)/build
-BIN=${WORKDIR}/centos-git-common
 
 function prepare {
     mkdir ${WORKDIR}
@@ -33,6 +32,8 @@ function prepare {
     popd
 
     pushd ${WORKDIR}/lorax-src
+    ln -fs ${WORKDIR}/centos-git-common/*.sh /usr/local/bin/
+
     git config user.email root@localhost
     git config user.name root
     git fetch origin pull/149/head:pr149
@@ -57,12 +58,12 @@ function build {
         pushd ${WORKDIR}/${pkg}
         specfile=SPECS/${pkg}.spec
         git checkout c7
-        ${BIN}/get_sources.sh
+        get_sources.sh
         patch=../${pkg}-src/0001*
         cp ${patch} SOURCES
         sed -i "/%description$/iPatch99: $(basename $patch)" ${specfile}
         sed -i '/%build/i%patch99 -p1' ${specfile}
-        ${BIN}/into_srpm.sh
+        into_srpm.sh
         yum-builddep -y ${specfile}
         rpmbuild --nodeps --define "%_topdir `pwd`" -bs ${specfile} && \
         rpmbuild --define "%_topdir `pwd`" -ba ${specfile}
