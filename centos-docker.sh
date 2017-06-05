@@ -8,7 +8,7 @@ set -x
 set -e
 
 GIT_REPOS=( \
-"https://github.com/CentOS/sig-cloud-instance-build" \
+"https://github.com/fabianorosas/sig-cloud-instance-build" \
 "https://github.com/CentOS/sig-core-t_docker" \
 "https://github.com/virt-manager/virt-manager virt-manager-src" \
 "https://github.com/rhinstaller/lorax lorax-src" \
@@ -71,13 +71,7 @@ function build {
     done
 
     pushd ${WORKDIR}/sig-cloud-instance-build
-    git config user.email root@localhost
-    git config user.name root
-    git fetch origin pull/85/head:pr85
-    git fetch origin pull/65/head:pr65
-    git checkout pr85
-    git rebase origin/master
-    git merge --no-commit pr65
+    git checkout mkumatag_ppc64le_support
     popd
 
     pushd ${WORKDIR}/sig-core-t_docker
