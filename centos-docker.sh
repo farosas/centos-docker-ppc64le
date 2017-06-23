@@ -8,13 +8,8 @@ set -x
 set -e
 
 GIT_REPOS=( \
-"https://github.com/fabianorosas/sig-cloud-instance-build" \
-"https://github.com/CentOS/sig-core-t_docker" \
-"https://github.com/virt-manager/virt-manager virt-manager-src" \
-"https://github.com/rhinstaller/lorax lorax-src" \
-"https://git.centos.org/git/rpms/virt-manager" \
-"https://git.centos.org/git/rpms/lorax" \
-"https://git.centos.org/git/centos-git-common" \
+"https://github.com/CentOS/sig-cloud-instance-build" \
+"https://github.com/CentOS/sig-core-t_docker"
 )
 
 WORKDIR=$(pwd)/build
@@ -31,52 +26,30 @@ function prepare {
     done
     popd
 
-    pushd ${WORKDIR}/lorax-src
-    ln -fs ${WORKDIR}/centos-git-common/*.sh /usr/local/bin/
+    patch -N /usr/sbin/livemedia-creator \
+	  0001-Add-ppc64le-kernel-path.patch | :
 
-    git config user.email root@localhost
-    git config user.name root
-    git fetch origin pull/149/head:pr149
-    git checkout pr149
-    git format-patch -1
-    popd
+    patch -N /usr/share/virt-manager/virtinst/urlfetcher.py \
+	  0001-Update-initrd-and-kernel-path-for-ppc64le-platform.patch | :
 
-    pushd ${WORKDIR}/virt-manager-src
-    git config user.email root@localhost
-    git config user.name root
-    git checkout v1.4.0
-    git cherry-pick cd35470e3c55aa64976cd0a96a6cfd756f71de17
-    git format-patch -1
-    popd
-}
+    pushd ${WORKDIR}/sig-cloud-instance-build/docker
+    git fetch origin pull/65/head:pr65
+    git rebase origin/master
+    git merge --no-commit pr65
 
-function build {
-    yum -y install yum-utils rpm-build
+    # alter x86 kickstart file with ppc64le modifications
+    cp centos-7.ks centos-7ppc64le.ks
 
-    for pkg in lorax virt-manager
-    do
-        pushd ${WORKDIR}/${pkg}
-        specfile=SPECS/${pkg}.spec
-        git checkout c7
-        get_sources.sh
-        patch=../${pkg}-src/0001*
-        cp ${patch} SOURCES
-        sed -i "/%description$/iPatch99: $(basename $patch)" ${specfile}
-        sed -i '/%build/i%patch99 -p1' ${specfile}
-        into_srpm.sh
-        yum-builddep -y ${specfile}
-        rpmbuild --nodeps --define "%_topdir `pwd`" -bs ${specfile} && \
-        rpmbuild --define "%_topdir `pwd`" -ba ${specfile}
-        popd
-    done
+    sed -i 's!mirrors.kernel.org!mirror.centos.org!' centos-7ppc64le.ks
+    sed -i 's!centos/7!altarch/7!' centos-7ppc64le.ks
+    sed -i 's!x86_64!ppc64le!' centos-7ppc64le.ks
+    sed -i '\!part / *!a\part prepboot --fstype "PPC PReP Boot" --size=10' centos-7ppc64le.ks
 
-    pushd ${WORKDIR}/sig-cloud-instance-build
-    git checkout mkumatag_ppc64le_support
+    # increase guest memory to avoid possible kernel errors with low memory
+    sed -i 's/\(time livemedia.*\)/\1 --ram 4096/' containerbuild.sh
     popd
 
     pushd ${WORKDIR}/sig-core-t_docker
-    git config user.email root@localhost
-    git config user.name root
     git fetch origin pull/2/head:pr2
     git checkout pr2
     git rebase origin/master
@@ -84,8 +57,6 @@ function build {
     chmod -x tests/p_docker/10_docker_get_centos_img.sh
     popd
 
-    yum -y localinstall lorax/RPMS/ppc64le/*
-    yum -y localinstall virt-manager/RPMS/noarch/*
     yum -y install qemu-kvm-ev qemu-kvm-common-ev qemu-kvm-tools-ev \
         qemu-img-ev libvirt
     yum -y install docker
@@ -93,15 +64,11 @@ function build {
 
 
 function run {
-    # there is an issue when running docker with selinux in enforcing
-    # mode
     setenforce 0
 
     systemctl start libvirtd
 
     pushd ${WORKDIR}/sig-cloud-instance-build/docker
-    # increase guest memory to avoid possible kernel errors with low memory
-    sed -i 's/\(time livemedia.*\)/\1 --ram 4096/' containerbuild.sh
     ./containerbuild.sh centos-7ppc64le.ks || { echo "Build failed"; exit 1; }
     popd
 
@@ -114,11 +81,7 @@ function run {
     popd
 }
 
-if [ ! -d "${WORKDIR}" ]
-then
-    prepare
-    build
-fi
+[ ! -d "${WORKDIR}" ] && prepare
 run
 
 exit 0

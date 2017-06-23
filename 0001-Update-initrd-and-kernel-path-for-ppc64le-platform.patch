@@ -1,0 +1,26 @@
+From cd35470e3c55aa64976cd0a96a6cfd756f71de17 Mon Sep 17 00:00:00 2001
+From: Manjunath A Kumatagi <mkumatag@in.ibm.com>
+Date: Tue, 9 Aug 2016 06:21:52 -0400
+Subject: [PATCH] Update initrd and kernel path for ppc64le platform.
+
+In CentOS 7 ppc64le platform initrd and kernel files are present under ppc/ppc64 folder. Currently GenericDistro module will find only under images/pxeboot folder. So to support custom boot the CentOS 7 ppc64le platform I've added the code to search under ppc/ppc64 folder as well.
+---
+ virtinst/urlfetcher.py | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/virtinst/urlfetcher.py b/virtinst/urlfetcher.py
+index 692a297..49e5ebd 100644
+--- a/virtinst/urlfetcher.py
++++ b/virtinst/urlfetcher.py
+@@ -677,6 +677,8 @@ class GenericDistro(Distro):
+                 ]
+     _hvm_paths = [("images/pxeboot/vmlinuz",
+                     "images/pxeboot/initrd.img"),       # Fedora
++                  ("ppc/ppc64/vmlinuz",
++                    "ppc/ppc64/initrd.img"),            # CenOS 7 ppc64le
+                 ]
+     _iso_paths = ["images/boot.iso",                   # RH/Fedora
+                    "boot/boot.iso",                     # Suse
+-- 
+1.8.3.1
+
