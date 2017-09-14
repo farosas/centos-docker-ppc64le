@@ -24,9 +24,6 @@ function prepare {
     patch -N /usr/sbin/livemedia-creator \
 	  0001-Add-ppc64le-kernel-path.patch || :
 
-    patch -N /usr/share/virt-manager/virtinst/urlfetcher.py \
-	  0001-Update-initrd-and-kernel-path-for-ppc64le-platform.patch || :
-
     mkdir ${WORK_DIR}
     pushd ${WORK_DIR}
 
