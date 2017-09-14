@@ -41,7 +41,7 @@ function prepare {
     # alter x86 kickstart file with ppc64le modifications
     cp centos-7.ks centos-7ppc64le.ks
 
-    sed -i 's!mirrors.kernel.org!mcentos.org!' centos-7ppc64le.ks
+    sed -i 's!mirrors.kernel.org!mirror.centos.org!' centos-7ppc64le.ks
     sed -i 's!centos/7!altarch/7!' centos-7ppc64le.ks
     sed -i 's!x86_64!ppc64le!' centos-7ppc64le.ks
     sed -i '\!part / *!a\part prepboot --fstype "PPC PReP Boot" --size=10' centos-7ppc64le.ks
