@@ -12,17 +12,12 @@ CONTAINERS_DIR=/var/tmp/containers
 TODAY=$(date +%Y%m%d)
 
 function install_deps {
-    yum -y install qemu-kvm-ev qemu-kvm-common-ev qemu-kvm-tools-ev \
-        qemu-img-ev libvirt
-    yum -y install lorax virt-install
+    yum -y install lorax anaconda
     yum -y install docker
 }
 
 function prepare {
     install_deps
-
-    patch -N /usr/sbin/livemedia-creator \
-	  0001-Add-ppc64le-kernel-path.patch || :
 
     mkdir ${WORK_DIR}
     pushd ${WORK_DIR}
@@ -30,29 +25,10 @@ function prepare {
     git clone https://github.com/CentOS/sig-cloud-instance-build
     git clone https://github.com/CentOS/sig-core-t_docker
 
-    pushd sig-cloud-instance-build/docker
-    git fetch origin pull/65/head:pr65
-    git rebase origin/master
-    git merge --no-commit pr65
-
-    # alter x86 kickstart file with ppc64le modifications
-    cp centos-7.ks centos-7ppc64le.ks
-
-    sed -i 's!mirrors.kernel.org!mirror.centos.org!' centos-7ppc64le.ks
-    sed -i 's!centos/7!altarch/7!' centos-7ppc64le.ks
-    sed -i 's!x86_64!ppc64le!' centos-7ppc64le.ks
-    sed -i '\!part / *!a\part prepboot --fstype "PPC PReP Boot" --size=10' centos-7ppc64le.ks
-
-    # increase guest memory to avoid possible kernel errors with low memory
-    sed -i 's/\(time livemedia.*\)/\1 --ram 4096/' containerbuild.sh
-
-    popd
     popd
 }
 
 function build_tarball {
-    systemctl start libvirtd
-
     pushd ${WORK_DIR}/sig-cloud-instance-build/docker
     ./containerbuild.sh centos-7ppc64le.ks
     popd
