@@ -10,6 +10,8 @@ set -e
 WORK_DIR=$(pwd)/build
 CONTAINERS_DIR=/var/tmp/containers
 TODAY=$(date +%Y%m%d)
+CENTOS_RELEASE=7.4.1708
+CENTOS_VERSION=${CENTOS_RELEASE%%.*}
 
 function install_deps {
     yum -y install lorax anaconda
@@ -40,9 +42,12 @@ function create_docker_img {
     systemctl start docker
 
     cat centos-7ppc64le-docker.tar.xz | docker import - centos:latest
-    docker tag centos:latest centos:centos${TODAY}
-    docker tag centos:latest centos:centos7
-    docker tag centos:latest centos:7
+
+    local org=ibmcom
+    local tags=(centos${TODAY} latest ${CENTOS_VERSION} centos${CENTOS_VERSION} ${CENTOS_RELEASE} centos${CENTOS_RELEASE})
+    for tag in ${tags[@]}; do
+	docker tag centos:latest ${org}/centos-ppc64le:${tag}
+    done
 }
 
 function test_docker_img {
